@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* 展厅展示系统 - 全屏布局 */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
