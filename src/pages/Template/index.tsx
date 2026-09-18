@@ -5,7 +5,7 @@
  * 路由：/template
  *
  * 这一页的作用不是展示业务，而是把「一个标准页面长什么样、用哪些组件、
- * 数据怎么放」全部演示一遍。你写自己的模块时，照着这一页抄结构就行。
+ * 数据怎么取」全部演示一遍。你写自己的模块时，照着这一页抄结构就行。
  *
  * 这一页演示了：
  *   1. PageShell 页面骨架（顶部栏 + 内容区 + 底部提示条）
@@ -17,30 +17,24 @@
  *   7. Table 表格（状态列用 RiskTag）
  *   8. Button 主/次按钮
  *   9. 点击有反馈（规范里的硬性要求）
- *  10. mock 数据怎么放、怎么命名
+ *  10. 数据怎么取：页面 → src/api/ → src/mock/，加载态怎么处理
  *
  * 注意：整页没有出现一个 # 色值，颜色全部来自设计令牌。
  * ============================================================================
  */
 
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Button, Table, type TableProps } from 'antd'
 import ReactECharts from 'echarts-for-react'
 
 // 通用组件统一从 '@/components' 引入
 import { PageShell, Panel, MetricCard, RiskTag } from '@/components'
 
-// 假数据统一从 '@/mock' 引入，不要写死在页面里
-import {
-  METRICS,
-  TREND,
-  CATEGORY_DIST,
-  DETECT_ROWS,
-  GRADES,
-  SUMMARY,
-  UPDATED_AT,
-  type DetectRow,
-} from '@/mock/template'
+// 【重点】数据从 '@/api' 取，不要直接 import '@/mock'
+// 阶段一 api 里返回假数据，阶段二换成真实请求，这个页面一行都不用改
+import { getTemplateData } from '@/api/template'
+import type { DetectRow } from '@/mock/template'
 
 /* ---------------------------------------------------------------------------
  * 表格列定义
@@ -77,23 +71,32 @@ const columns: TableProps<DetectRow>['columns'] = [
 ]
 
 const Template = () => {
+  /* --- 取数据：用 React Query，自带加载态 / 缓存 / 重试 --- */
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['template'],
+    queryFn: getTemplateData,
+  })
+
   // 演示「点击有反馈」：选中哪个等级，哪个就高亮
   const [activeGrade, setActiveGrade] = useState('良级')
-  // 演示「操作按钮」：点「重新识别」切换一组数据
-  const [refreshed, setRefreshed] = useState(false)
+
+  /* 加载态：不要留白，给个占位。展厅大屏上留白会显得像坏了 */
+  if (isLoading || !data) {
+    return (
+      <PageShell area="样板页" title="组件与用法示例">
+        <div className="flex h-full items-center justify-center text-ink-subtle">
+          正在加载…
+        </div>
+      </PageShell>
+    )
+  }
 
   /* 图表配置：只写数据，不写样式 —— 样式由 theme="grain-hall" 统一提供 */
   const trendOption = {
     tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: TREND.map((d) => d.time) },
+    xAxis: { type: 'category', data: data.trend.map((d) => d.time) },
     yAxis: { type: 'value', name: '杂质率 %' },
-    series: [
-      {
-        name: '杂质率',
-        type: 'line',
-        data: TREND.map((d) => d.impurityRate),
-      },
-    ],
+    series: [{ name: '杂质率', type: 'line', data: data.trend.map((d) => d.impurityRate) }],
   }
 
   const distOption = {
@@ -104,7 +107,7 @@ const Template = () => {
         name: '杂质构成',
         type: 'pie',
         radius: ['55%', '78%'], // 环形图，不用实心饼图
-        data: CATEGORY_DIST,
+        data: data.categoryDist,
       },
     ],
   }
@@ -117,14 +120,14 @@ const Template = () => {
       status={
         <>
           <RiskTag level="warn" />
-          <span className="font-mono text-sm text-ink-subtle">{UPDATED_AT}</span>
+          <span className="font-mono text-sm text-ink-subtle">{data.updatedAt}</span>
         </>
       }
       footer="操作提示：点击「质量等级」卡片查看详情，点击「重新识别」刷新检测结果"
     >
       <div className="grid grid-cols-12 gap-6">
         {/* 2. 指标卡一行 —— 同组卡片尺寸一致，数值大、单位小 */}
-        {METRICS.map((m) => (
+        {data.metrics.map((m) => (
           <div key={m.label} className="col-span-3">
             <MetricCard
               label={m.label}
@@ -155,13 +158,13 @@ const Template = () => {
           <Panel
             title="质量等级"
             extra={
-              <Button size="small" onClick={() => setRefreshed((v) => !v)}>
+              <Button size="small" onClick={() => void refetch()}>
                 重新识别
               </Button>
             }
           >
             <div className="space-y-3">
-              {GRADES.map((g) => {
+              {data.grades.map((g) => {
                 const active = g.name === activeGrade
                 return (
                   <button
@@ -184,10 +187,7 @@ const Template = () => {
 
             <div className="mt-4 rounded-lg bg-raised p-4">
               <div className="mb-1 text-sm text-ink-subtle">AI 判定结论</div>
-              <p className="text-ink-muted">
-                {refreshed ? '检测已刷新：' : ''}
-                {SUMMARY}
-              </p>
+              <p className="text-ink-muted">{data.summary}</p>
             </div>
           </Panel>
         </div>
@@ -199,7 +199,7 @@ const Template = () => {
             extra={
               <div className="flex gap-2">
                 <Button size="small">导出</Button>
-                <Button size="small" type="primary">
+                <Button size="small" type="primary" onClick={() => void refetch()}>
                   重新检测
                 </Button>
               </div>
@@ -207,7 +207,7 @@ const Template = () => {
           >
             <Table<DetectRow>
               columns={columns}
-              dataSource={DETECT_ROWS}
+              dataSource={data.detectRows}
               rowKey="id"
               pagination={false}
               size="middle"
