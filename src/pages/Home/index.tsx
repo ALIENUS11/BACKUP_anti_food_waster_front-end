@@ -1,35 +1,51 @@
 import { Link } from 'react-router-dom'
+import { AREA_GROUPS } from '@/router/routes'
 
-const areas = [
-  { path: '/hall', name: '区域一：展厅大厅', icon: '🌾', desc: '欢迎来到「一粒米的旅程」' },
-  { path: '/quality-check', name: '区域二：质量检测', icon: '🔍', desc: '质量检测流程与标准' },
-  { path: '/transport', name: '区域三：粮食运输', icon: '🚛', desc: '粮食收购与运输环节' },
-  { path: '/pest', name: '区域四：虫害防治', icon: '🐛', desc: '储存中的虫害防治技术' },
-  { path: '/canteen', name: '区域五：食堂餐桌', icon: '🍚', desc: '从田间到餐桌的旅程' },
-  { path: '/summary', name: '区域六：总结回顾', icon: '📊', desc: '旅程回顾与粮食节约倡议' },
-]
+/**
+ * 首页 / 导航页
+ *
+ * 区域和模块列表都从 src/router/routes.ts 自动读取，
+ * 新增页面后这里会自动多出条目，不需要改这个文件。
+ */
+const Home = () => (
+  <div className="flex h-full flex-col items-center overflow-auto bg-canvas px-8 py-16">
+    <h1 className="text-hero text-ink">🌾 一粒米的旅程</h1>
+    <p className="mt-4 mb-16 text-ink-subtle">反粮食浪费重点实验室 · 数字展厅</p>
 
-const Home = () => {
-  return (
-    <div className="flex min-h-screen flex-col items-center bg-gradient-to-b from-amber-50 to-green-50 px-4 py-12">
-      <h1 className="mb-2 text-5xl font-bold text-amber-800">🌾 一粒米的旅程</h1>
-      <p className="mb-10 text-lg text-gray-500">反粮食浪费 · 数字展厅</p>
+    <div className="grid w-full max-w-7xl grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {AREA_GROUPS.map((group) => (
+        <section
+          key={group.code}
+          className="rounded-xl border border-line bg-panel p-6 shadow-panel"
+        >
+          <h2 className="text-section text-ink">{group.area}</h2>
+          <p className="mt-1 mb-4 text-sm text-ink-subtle">{group.device}</p>
 
-      <div className="grid w-full max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {areas.map((area) => (
-          <Link
-            key={area.path}
-            to={area.path}
-            className="rounded-xl border border-amber-200 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-          >
-            <div className="mb-3 text-3xl">{area.icon}</div>
-            <h2 className="mb-1 text-lg font-semibold text-gray-800">{area.name}</h2>
-            <p className="text-sm text-gray-400">{area.desc}</p>
-          </Link>
-        ))}
-      </div>
+          <ul className="space-y-2">
+            {group.modules.map((m) => (
+              <li key={m.path}>
+                <Link
+                  to={m.path}
+                  className="flex items-center justify-between rounded-lg border border-line px-4 py-3 transition-all hover:border-brand hover:bg-brand-soft"
+                >
+                  <span className="text-ink">{m.name}</span>
+                  <span className="font-mono text-xs text-ink-subtle">{m.num}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
-  )
-}
+
+    {/* 开发用入口，不是展厅内容，上线前删掉这一段 */}
+    <Link
+      to="/template"
+      className="mt-16 text-sm text-ink-subtle underline underline-offset-4 hover:text-brand"
+    >
+      开发样板页（组件用法示例）→
+    </Link>
+  </div>
+)
 
 export default Home
